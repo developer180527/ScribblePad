@@ -35,7 +35,7 @@ export default function NoteEditor({ noteId, onClose }: NoteEditorProps) {
     });
 
     const dpr = window.devicePixelRatio || 1;
-    const rect = container.getBoundingClientRect();
+    const rect = canvas.getBoundingClientRect();
     
     // Set actual size in memory (scaled to account for extra pixel density)
     canvas.width = rect.width * dpr;
@@ -108,9 +108,7 @@ export default function NoteEditor({ noteId, onClose }: NoteEditorProps) {
       } else {
         ctx.globalCompositeOperation = 'source-over';
         ctx.strokeStyle = '#171717'; // Neutral 900
-        // Adjust initial width based on pressure if available
-        const pressure = e.pointerType === 'pen' ? e.pressure : 0.5;
-        ctx.lineWidth = Math.max(2, 8 * pressure); 
+        ctx.lineWidth = 4; // Constant width for pencil
       }
 
       ctx.beginPath();
@@ -133,11 +131,6 @@ export default function NoteEditor({ noteId, onClose }: NoteEditorProps) {
       
       for (const event of events) {
         const pos = getPos(event);
-        
-        if (tool === 'pencil' && event.pointerType === 'pen') {
-          // Dynamic pressure for pencil
-          ctx.lineWidth = Math.max(1, 10 * event.pressure);
-        }
         
         ctx.lineTo(pos.x, pos.y);
         lastPos.current = pos;
