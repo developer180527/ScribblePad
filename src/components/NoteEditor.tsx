@@ -42,7 +42,7 @@ export default function NoteEditor({ noteId, onClose }: NoteEditorProps) {
     canvas.height = rect.height * dpr;
     
     // Normalize coordinate system to use css pixels
-    const ctx = canvas.getContext('2d', { desynchronized: true, willReadFrequently: true });
+    const ctx = canvas.getContext('2d', { desynchronized: true });
     if (!ctx) return;
     
     ctx.scale(dpr, dpr);
@@ -79,14 +79,16 @@ export default function NoteEditor({ noteId, onClose }: NoteEditorProps) {
     if (!canvas) return;
 
     const getPos = (e: PointerEvent) => {
-      const rect = canvas.getBoundingClientRect();
       return {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top
+        x: e.offsetX,
+        y: e.offsetY
       };
     };
 
     const handlePointerDown = (e: PointerEvent) => {
+      // Prevent default to stop any browser-level gesture handling that might cause latency
+      e.preventDefault();
+      
       // If we are already drawing with another pointer, ignore this one
       if (activePointerId.current !== null) return;
       
@@ -123,15 +125,17 @@ export default function NoteEditor({ noteId, onClose }: NoteEditorProps) {
       const ctx = ctxRef.current;
       if (!ctx) return;
 
-      // Use coalesced events for smoother curves if available (native browser feature)
+      // Use coalesced events for smoother curves
       const events = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+      
+      // Also consider predicted events for even lower perceived latency
+      const predictedEvents = e.getPredictedEvents ? e.getPredictedEvents() : [];
       
       ctx.beginPath();
       ctx.moveTo(lastPos.current.x, lastPos.current.y);
       
-      for (const event of events) {
+      for (const event of [...events, ...predictedEvents]) {
         const pos = getPos(event);
-        
         ctx.lineTo(pos.x, pos.y);
         lastPos.current = pos;
       }
@@ -146,10 +150,10 @@ export default function NoteEditor({ noteId, onClose }: NoteEditorProps) {
       canvas.releasePointerCapture(e.pointerId);
     };
 
-    canvas.addEventListener('pointerdown', handlePointerDown);
-    canvas.addEventListener('pointermove', handlePointerMove);
-    canvas.addEventListener('pointerup', handlePointerUp);
-    canvas.addEventListener('pointercancel', handlePointerUp);
+    canvas.addEventListener('pointerdown', handlePointerDown, { passive: false });
+    canvas.addEventListener('pointermove', handlePointerMove, { passive: false });
+    canvas.addEventListener('pointerup', handlePointerUp, { passive: false });
+    canvas.addEventListener('pointercancel', handlePointerUp, { passive: false });
 
     return () => {
       canvas.removeEventListener('pointerdown', handlePointerDown);
